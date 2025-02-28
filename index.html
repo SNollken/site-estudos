@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulados Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.0.0/dist/umd/supabase.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="root">
+        <!-- Header -->
+        <header class="bg-white shadow-md">
+            <nav class="container mx-auto px-6 py-4">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-gray-800">Simulados Online</h1>
+                    <div class="space-x-4">
+                        <button id="loginBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Login
+                        </button>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-6 py-8">
+            <!-- Hero Section -->
+            <section class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Prepare-se para suas provas</h2>
+                <p class="text-xl text-gray-600 mb-8">Pratique com simulados de provas anteriores das principais universidades</p>
+                <button id="startBtn" class="px-8 py-3 bg-green-600 text-white rounded-lg text-lg hover:bg-green-700">
+                    Começar Agora
+                </button>
+            </section>
+
+            <!-- Selection Form -->
+            <section id="selectionForm" class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8 hidden">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="university">
+                            Universidade
+                        </label>
+                        <select id="university" class="w-full p-2 border rounded">
+                            <option value="">Selecione uma universidade</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="subject">
+                            Matéria
+                        </label>
+                        <select id="subject" class="w-full p-2 border rounded" disabled>
+                            <option value="">Selecione uma matéria</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="year">
+                            Ano
+                        </label>
+                        <select id="year" class="w-full p-2 border rounded" disabled>
+                            <option value="">Selecione um ano</option>
+                        </select>
+                    </div>
+
+                    <button id="startExamBtn" class="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" disabled>
+                        Iniciar Simulado
+                    </button>
+                </div>
+            </section>
+
+            <!-- Exam Section -->
+            <section id="examSection" class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8 hidden">
+                <div class="mb-4">
+                    <div class="flex justify-between items-center">
+                        <span id="questionCounter" class="text-gray-600">Questão 1 de 10</span>
+                        <span id="timer" class="text-gray-600">00:00</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 10%"></div>
+                    </div>
+                </div>
+
+                <div id="questionContent" class="mb-8">
+                    <p id="questionText" class="text-lg mb-4"></p>
+                    <div id="options" class="space-y-4"></div>
+                </div>
+
+                <button id="nextQuestionBtn" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" disabled>
+                    Próxima Questão
+                </button>
+            </section>
+
+            <!-- Results Section -->
+            <section id="resultsSection" class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8 hidden">
+                <h3 class="text-2xl font-bold text-center mb-6">Resultados do Simulado</h3>
+                <div class="text-center mb-8">
+                    <div class="text-4xl font-bold text-blue-600 mb-2" id="scoreDisplay">0/10</div>
+                    <p class="text-gray-600">Questões corretas</p>
+                </div>
+                <div class="space-y-4">
+                    <button id="reviewBtn" class="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Revisar Questões
+                    </button>
+                    <button id="newExamBtn" class="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                        Novo Simulado
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-8">
+            <div class="container mx-auto px-6">
+                <p class="text-center">&copy; 2024 Simulados Online. Todos os direitos reservados.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const { createClient } = supabase;
+        const supabaseUrl = 'https://gvvcxugqimcrkpqlucmd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmN4dWdxaW1jcmtwcWx1Y21kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NzA2NTYsImV4cCI6MjA1NjM0NjY1Nn0.neEV-tGph_7t8ufmyfWqJmVEwdDdlwVen-8vc4yJMgc';
+        const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+        // Adiciona loading states
+        function setLoading(element, isLoading) {
+            if (isLoading) {
+                element.disabled = true;
+                element.innerHTML = '<span class="inline-block animate-spin mr-2">⌛</span> Carregando...';
+            } else {
+                element.disabled = false;
+                element.innerHTML = element.getAttribute('data-original-text') || element.innerHTML;
+            }
+        }
+
+        // Dynamic loading of data with error handling
+        universitySelect.addEventListener('change', async () => {
+            if (universitySelect.value) {
+                setLoading(subjectSelect, true);
+                const { data: subjects, error } = await supabaseClient
+                    .from('materials')
+                    .select('*')
+                    .eq('universidade_id', universitySelect.value);
+
+                if (error) {
+                    console.error('Error fetching subjects:', error);
+                    alert('Erro ao carregar matérias. Por favor, tente novamente.');
+                } else {
+                    subjectSelect.innerHTML = '<option value="">Selecione uma matéria</option>';
+                    subjects.forEach(subject => {
+                        const option = document.createElement('option');
+                        option.value = subject.id;
+                        option.textContent = subject.nome;
+                        subjectSelect.appendChild(option);
+                    });
+                }
+                setLoading(subjectSelect, false);
+                subjectSelect.disabled = false;
+            }
+        });
+
+        subjectSelect.addEventListener('change', async () => {
+            if (subjectSelect.value) {
+                setLoading(yearSelect, true);
+                const { data: years, error } = await supabaseClient
+                    .from('proves')
+                    .select('ano')
+                    .eq('materia_id', subjectSelect.value);
+
+                if (error) {
+                    console.error('Error fetching years:', error);
+                    alert('Erro ao carregar anos. Por favor, tente novamente.');
+                } else {
+                    yearSelect.innerHTML = '<option value="">Selecione um ano</option>';
+                    years.forEach(year => {
+                        const option = document.createElement('option');
+                        option.value = year.ano;
+                        option.textContent = year.ano;
+                        yearSelect.appendChild(option);
+                    });
+                }
+                setLoading(yearSelect, false);
+                yearSelect.disabled = false;
+            }
+        });
+
+        // Start exam button handler with loading state
+        startExamBtn.addEventListener('click', async () => {
+            setLoading(startExamBtn, true);
+            const { data: fetchedQuestions, error } = await supabaseClient
+                .from('questions')
+                .select('*')
+                .eq('prova_id', yearSelect.value)
+                .eq('materia_id', subjectSelect.value);
+
+            if (error) {
+                console.error('Error fetching questions:', error);
+                alert('Erro ao carregar questões. Por favor, tente novamente.');
+                setLoading(startExamBtn, false);
+                return;
+            }
+
+            questions = fetchedQuestions;
+            selectionForm.classList.add('hidden');
+            examSection.classList.remove('hidden');
+            displayQuestion(questions[0]);
+            setLoading(startExamBtn, false);
+        });
+
+        // Initialize Supabase client here
+        const startBtn = document.getElementById('startBtn');
+        const selectionForm = document.getElementById('selectionForm');
+        const examSection = document.getElementById('examSection');
+        const resultsSection = document.getElementById('resultsSection');
+
+        startBtn.addEventListener('click', () => {
+            selectionForm.classList.remove('hidden');
+            startBtn.classList.add('hidden');
+        });
+
+        // Add event listeners and functionality for form selections
+        const universitySelect = document.getElementById('university');
+        const subjectSelect = document.getElementById('subject');
+        const yearSelect = document.getElementById('year');
+        const startExamBtn = document.getElementById('startExamBtn');
+
+        // Example of dynamic loading (to be implemented with actual API calls)
+        universitySelect.addEventListener('change', async () => {
+            if (universitySelect.value) {
+                subjectSelect.disabled = false;
+                // Load subjects from API
+            }
+        });
+
+        subjectSelect.addEventListener('change', async () => {
+            if (subjectSelect.value) {
+                yearSelect.disabled = false;
+                // Load years from API
+            }
+        });
+
+        yearSelect.addEventListener('change', () => {
+            if (yearSelect.value) {
+                startExamBtn.disabled = false;
+            }
+        });
+
+        startExamBtn.addEventListener('click', () => {
+            selectionForm.classList.add('hidden');
+            examSection.classList.remove('hidden');
+            // Load first question
+        });
+
+        // Add more event listeners and functionality for exam progression
+    </script>
+</body>
+</html>
