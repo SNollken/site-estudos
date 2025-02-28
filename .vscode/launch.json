@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Abrir no Brave",
+            "file": "/home/sofia/Code/site-estudos/index.html",
+            "runtimeExecutable": "/usr/bin/brave-browser",
+            "runtimeArgs": ["--remote-debugging-port=9222"]
+        }
+    ]
+}

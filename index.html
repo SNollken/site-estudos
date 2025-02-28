@@ -51,7 +51,16 @@
                             Matéria
                         </label>
                         <select id="subject" class="w-full p-2 border rounded" disabled>
-                            <option value="">Selecione uma matéria</option>
+                            <option value="none">Nenhuma específica</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="subSubject">
+                            Submatéria
+                        </label>
+                        <select id="subSubject" class="w-full p-2 border rounded" disabled>
+                            <option value="none">Nenhuma específica</option>
                         </select>
                     </div>
 
@@ -60,7 +69,7 @@
                             Ano
                         </label>
                         <select id="year" class="w-full p-2 border rounded" disabled>
-                            <option value="">Selecione um ano</option>
+                            <option value="all">Todos os anos</option>
                         </select>
                     </div>
 
@@ -125,6 +134,55 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmN4dWdxaW1jcmtwcWx1Y21kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NzA2NTYsImV4cCI6MjA1NjM0NjY1Nn0.neEV-tGph_7t8ufmyfWqJmVEwdDdlwVen-8vc4yJMgc';
         const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
+        // Get DOM elements
+        const startBtn = document.getElementById('startBtn');
+        const selectionForm = document.getElementById('selectionForm');
+        const examSection = document.getElementById('examSection');
+        const resultsSection = document.getElementById('resultsSection');
+        const universitySelect = document.getElementById('university');
+        const subjectSelect = document.getElementById('subject');
+        const subSubjectSelect = document.getElementById('subSubject');
+        const yearSelect = document.getElementById('year');
+        const startExamBtn = document.getElementById('startExamBtn');
+
+        // Initialize universities when page loads
+        async function loadUniversities() {
+            console.log('Carregando universidades...');
+            try {
+                const { data: universities, error } = await supabaseClient
+                    .from('universidades')
+                    .select('*');
+
+                console.log('Dados recebidos:', universities);
+                
+                if (error) {
+                    console.error('Erro detalhado:', error);
+                    alert('Erro ao carregar universidades. Por favor, tente novamente.');
+                    return;
+                }
+
+                if (!universities || universities.length === 0) {
+                    console.log('Nenhuma universidade encontrada');
+                    return;
+                }
+
+                universitySelect.innerHTML = '<option value="">Selecione uma universidade</option>';
+                universities.forEach(uni => {
+                    console.log('Adicionando universidade:', uni);
+                    const option = document.createElement('option');
+                    option.value = uni.id;
+                    option.textContent = uni.nome;
+                    universitySelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error('Erro de execução:', err);
+                alert('Erro ao conectar com o banco de dados. Por favor, tente novamente.');
+            }
+        }
+
+        // Load universities when page loads
+        document.addEventListener('DOMContentLoaded', loadUniversities);
+
         // Adiciona loading states
         function setLoading(element, isLoading) {
             if (isLoading) {
@@ -136,58 +194,165 @@
             }
         }
 
-        // Dynamic loading of data with error handling
+        // Start button click handler
+        startBtn.addEventListener('click', () => {
+            selectionForm.classList.remove('hidden');
+            startBtn.parentElement.classList.add('hidden');
+        });
+
+        // University select change handler
         universitySelect.addEventListener('change', async () => {
             if (universitySelect.value) {
+                // Log no início
+                console.log('=== INÍCIO DA SELEÇÃO DE UNIVERSIDADE ===');
+                console.log('Universidade selecionada ID:', universitySelect.value);
+                
                 setLoading(subjectSelect, true);
-                const { data: subjects, error } = await supabaseClient
-                    .from('materials')
-                    .select('*')
-                    .eq('universidade_id', universitySelect.value);
+                
+                try {
+                    // Buscar matérias da universidade selecionada
+                    const { data: subjects, error } = await supabaseClient
+                        .from('materias')
+                        .select('*')
+                        .eq('universidade_id', universitySelect.value);
 
-                if (error) {
-                    console.error('Error fetching subjects:', error);
+                    // Log após a consulta
+                    console.log('=== RESULTADO DA CONSULTA ===');
+                    console.log('Erro:', error ? error : 'Nenhum erro');
+                    console.log('Número de matérias encontradas:', subjects ? subjects.length : 0);
+                    console.log('Matérias:', subjects);
+
+                    if (error) {
+                        throw error;
+                    }
+
+                    // Reset e configure opção padrão
+                    subjectSelect.innerHTML = '<option value="none">Nenhuma específica</option>';
+                    subSubjectSelect.innerHTML = '<option value="none">Nenhuma específica</option>';
+                    yearSelect.innerHTML = '<option value="all">Todos os anos</option>';
+
+                    if (subjects && subjects.length > 0) {
+                        console.log('=== ADICIONANDO MATÉRIAS AO SELECT ===');
+                        subjects.forEach(subject => {
+                            console.log('Matéria sendo adicionada:', {
+                                id: subject.id,
+                                nome: subject.nome
+                            });
+                            const option = document.createElement('option');
+                            option.value = subject.id;
+                            option.textContent = subject.nome;
+                            subjectSelect.appendChild(option);
+                        });
+                    } else {
+                        console.log('=== NENHUMA MATÉRIA ENCONTRADA ===');
+                    }
+
+                    // Habilita os selects necessários
+                    subjectSelect.disabled = false;
+                    loadYears(); // Carrega anos disponíveis
+
+                } catch (err) {
+                    console.log('=== ERRO NA EXECUÇÃO ===');
+                    console.log('Erro detalhado:', err);
                     alert('Erro ao carregar matérias. Por favor, tente novamente.');
-                } else {
-                    subjectSelect.innerHTML = '<option value="">Selecione uma matéria</option>';
-                    subjects.forEach(subject => {
-                        const option = document.createElement('option');
-                        option.value = subject.id;
-                        option.textContent = subject.nome;
-                        subjectSelect.appendChild(option);
-                    });
                 }
+
                 setLoading(subjectSelect, false);
-                subjectSelect.disabled = false;
+                console.log('=== FIM DA SELEÇÃO DE UNIVERSIDADE ===');
             }
         });
 
+        // Subject select change handler
         subjectSelect.addEventListener('change', async () => {
             if (subjectSelect.value) {
-                setLoading(yearSelect, true);
-                const { data: years, error } = await supabaseClient
-                    .from('proves')
-                    .select('ano')
-                    .eq('materia_id', subjectSelect.value);
+                setLoading(subSubjectSelect, true);
+                
+                try {
+                    if (subjectSelect.value === 'none') {
+                        subSubjectSelect.innerHTML = '<option value="none">Nenhuma específica</option>';
+                        subSubjectSelect.disabled = true;
+                    } else {
+                        const { data: subSubjects, error } = await supabaseClient
+                            .from('submaterias')
+                            .select('*')
+                            .eq('materia_id', subjectSelect.value);
 
-                if (error) {
-                    console.error('Error fetching years:', error);
-                    alert('Erro ao carregar anos. Por favor, tente novamente.');
-                } else {
-                    yearSelect.innerHTML = '<option value="">Selecione um ano</option>';
-                    years.forEach(year => {
+                        if (error) throw error;
+
+                        subSubjectSelect.innerHTML = '<option value="none">Nenhuma específica</option>';
+                        if (subSubjects && subSubjects.length > 0) {
+                            subSubjects.forEach(sub => {
+                                const option = document.createElement('option');
+                                option.value = sub.id;
+                                option.textContent = sub.nome;
+                                subSubjectSelect.appendChild(option);
+                            });
+                            subSubjectSelect.disabled = false;
+                        } else {
+                            subSubjectSelect.disabled = true;
+                        }
+                    }
+
+                    loadYears(); // Recarrega anos com base na nova seleção
+
+                } catch (err) {
+                    console.error('Erro ao buscar submaterias:', err);
+                    alert('Erro ao carregar submaterias. Por favor, tente novamente.');
+                }
+
+                setLoading(subSubjectSelect, false);
+            }
+        });
+
+        // Função para carregar anos
+        async function loadYears() {
+            setLoading(yearSelect, true);
+
+            try {
+                let query = supabaseClient
+                    .from('provas')
+                    .select('ano');
+
+                if (subjectSelect.value !== 'none') {
+                    query = query.eq('materia_id', subjectSelect.value);
+                }
+                if (universitySelect.value) {
+                    query = query.eq('universidade_id', universitySelect.value);
+                }
+
+                const { data: years, error } = await query;
+
+                if (error) throw error;
+
+                yearSelect.innerHTML = '<option value="all">Todos os anos</option>';
+                if (years && years.length > 0) {
+                    const uniqueYears = [...new Set(years.map(y => y.ano))];
+                    uniqueYears.sort((a, b) => b - a);
+
+                    uniqueYears.forEach(year => {
                         const option = document.createElement('option');
-                        option.value = year.ano;
-                        option.textContent = year.ano;
+                        option.value = year;
+                        option.textContent = year;
                         yearSelect.appendChild(option);
                     });
                 }
-                setLoading(yearSelect, false);
+
                 yearSelect.disabled = false;
+
+            } catch (err) {
+                console.error('Erro ao buscar anos:', err);
+                alert('Erro ao carregar anos. Por favor, tente novamente.');
             }
+
+            setLoading(yearSelect, false);
+        }
+
+        // Year select change handler
+        yearSelect.addEventListener('change', () => {
+            startExamBtn.disabled = false;
         });
 
-        // Start exam button handler with loading state
+        // Start exam button handler
         startExamBtn.addEventListener('click', async () => {
             setLoading(startExamBtn, true);
             const { data: fetchedQuestions, error } = await supabaseClient
@@ -195,6 +360,9 @@
                 .select('*')
                 .eq('prova_id', yearSelect.value)
                 .eq('materia_id', subjectSelect.value);
+
+            console.log('Questões recebidas:', fetchedQuestions);
+            console.log('Erro (se houver):', error);
 
             if (error) {
                 console.error('Error fetching questions:', error);
@@ -210,51 +378,13 @@
             setLoading(startExamBtn, false);
         });
 
-        // Initialize Supabase client here
-        const startBtn = document.getElementById('startBtn');
-        const selectionForm = document.getElementById('selectionForm');
-        const examSection = document.getElementById('examSection');
-        const resultsSection = document.getElementById('resultsSection');
+        // Function to display question (to be implemented)
+        function displayQuestion(question) {
+            // Implementation for displaying questions
+            console.log('Displaying question:', question);
+        }
 
-        startBtn.addEventListener('click', () => {
-            selectionForm.classList.remove('hidden');
-            startBtn.classList.add('hidden');
-        });
-
-        // Add event listeners and functionality for form selections
-        const universitySelect = document.getElementById('university');
-        const subjectSelect = document.getElementById('subject');
-        const yearSelect = document.getElementById('year');
-        const startExamBtn = document.getElementById('startExamBtn');
-
-        // Example of dynamic loading (to be implemented with actual API calls)
-        universitySelect.addEventListener('change', async () => {
-            if (universitySelect.value) {
-                subjectSelect.disabled = false;
-                // Load subjects from API
-            }
-        });
-
-        subjectSelect.addEventListener('change', async () => {
-            if (subjectSelect.value) {
-                yearSelect.disabled = false;
-                // Load years from API
-            }
-        });
-
-        yearSelect.addEventListener('change', () => {
-            if (yearSelect.value) {
-                startExamBtn.disabled = false;
-            }
-        });
-
-        startExamBtn.addEventListener('click', () => {
-            selectionForm.classList.add('hidden');
-            examSection.classList.remove('hidden');
-            // Load first question
-        });
-
-        // Add more event listeners and functionality for exam progression
+        let questions = []; // Array to store fetched questions
     </script>
 </body>
 </html>
