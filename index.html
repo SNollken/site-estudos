@@ -13,7 +13,9 @@
         <header class="bg-white shadow-md">
             <nav class="container mx-auto px-6 py-4">
                 <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold text-gray-800">Simulados Online</h1>
+                    <h1 class="text-2xl font-bold text-gray-800 cursor-pointer" id="homeBtn">
+                        Simulados Online
+                    </h1>
                     <div class="space-x-4">
                         <button id="loginBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                             Login
@@ -83,22 +85,15 @@
             <section id="examSection" class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8 hidden">
                 <div class="mb-4">
                     <div class="flex justify-between items-center">
-                        <span id="questionCounter" class="text-gray-600">Questão 1 de 10</span>
-                        <span id="timer" class="text-gray-600">00:00</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2.5">
-                        <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 10%"></div>
+                        <button id="nextQuestion" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Próxima Questão
+                        </button>
                     </div>
                 </div>
 
                 <div id="questionContent" class="mb-8">
-                    <p id="questionText" class="text-lg mb-4"></p>
-                    <div id="options" class="space-y-4"></div>
+                    <!-- A questão será inserida aqui -->
                 </div>
-
-                <button id="nextQuestionBtn" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" disabled>
-                    Próxima Questão
-                </button>
             </section>
 
             <!-- Results Section -->
@@ -180,8 +175,97 @@
             }
         }
 
-        // Load universities when page loads
-        document.addEventListener('DOMContentLoaded', loadUniversities);
+        // Carregar matérias quando a página carregar
+        async function loadSubjects() {
+            try {
+                const { data: subjects, error } = await supabaseClient
+                    .from('materias')
+                    .select('id, nome')
+                    .order('nome');
+
+                if (error) {
+                    alert('Erro na consulta: ' + JSON.stringify(error));
+                    throw error;
+                }
+
+                // Reset e configure opção padrão
+                subjectSelect.innerHTML = '<option value="none">Nenhuma específica</option>';
+                
+                if (subjects && subjects.length > 0) {
+                    subjects.forEach(subject => {
+                        const option = document.createElement('option');
+                        option.value = subject.id;
+                        option.textContent = subject.nome;
+                        subjectSelect.appendChild(option);
+                    });
+                }
+
+                // Habilita o select
+                subjectSelect.disabled = false;
+
+            } catch (err) {
+                alert('Erro ao carregar matérias: ' + JSON.stringify(err));
+            }
+        }
+
+        // Carregar anos quando a página carregar
+        async function loadYears() {
+            setLoading(yearSelect, true);
+
+            try {
+                let query = supabaseClient
+                    .from('provas')
+                    .select('ano');
+
+                const { data: years, error } = await query;
+
+                if (error) {
+                    console.error('Erro ao buscar anos:', error);
+                    throw error;
+                }
+
+                // Guardar o ano selecionado atualmente
+                const selectedYear = yearSelect.value;
+                
+                // Reset e configure opção padrão
+                yearSelect.innerHTML = '<option value="all">Todos os anos</option>';
+                
+                if (years && years.length > 0) {
+                    // Criar um Set para remover duplicatas
+                    const uniqueYears = [...new Set(years.map(y => y.ano))];
+                    // Ordenar anos em ordem decrescente
+                    uniqueYears.sort((a, b) => b - a);
+
+                    uniqueYears.forEach(year => {
+                        const option = document.createElement('option');
+                        option.value = year;
+                        option.textContent = year;
+                        yearSelect.appendChild(option);
+                    });
+
+                    // Restaurar o ano selecionado se existia
+                    if (selectedYear) {
+                        yearSelect.value = selectedYear;
+                    }
+                }
+
+                yearSelect.disabled = false;
+                startExamBtn.disabled = false; // Sempre habilita o botão
+
+            } catch (err) {
+                console.error('Erro ao carregar anos:', err);
+                alert('Erro ao carregar anos. Por favor, tente novamente.');
+            }
+
+            setLoading(yearSelect, false);
+        }
+
+        // Carregar tudo quando a página carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUniversities();
+            loadSubjects();
+            loadYears();
+        });
 
         // Adiciona loading states
         function setLoading(element, isLoading) {
@@ -198,68 +282,6 @@
         startBtn.addEventListener('click', () => {
             selectionForm.classList.remove('hidden');
             startBtn.parentElement.classList.add('hidden');
-        });
-
-        // University select change handler
-        universitySelect.addEventListener('change', async () => {
-            if (universitySelect.value) {
-                // Log no início
-                console.log('=== INÍCIO DA SELEÇÃO DE UNIVERSIDADE ===');
-                console.log('Universidade selecionada ID:', universitySelect.value);
-                
-                setLoading(subjectSelect, true);
-                
-                try {
-                    // Buscar matérias da universidade selecionada
-                    const { data: subjects, error } = await supabaseClient
-                        .from('materias')
-                        .select('*')
-                        .eq('universidade_id', universitySelect.value);
-
-                    // Log após a consulta
-                    console.log('=== RESULTADO DA CONSULTA ===');
-                    console.log('Erro:', error ? error : 'Nenhum erro');
-                    console.log('Número de matérias encontradas:', subjects ? subjects.length : 0);
-                    console.log('Matérias:', subjects);
-
-                    if (error) {
-                        throw error;
-                    }
-
-                    // Reset e configure opção padrão
-                    subjectSelect.innerHTML = '<option value="none">Nenhuma específica</option>';
-                    subSubjectSelect.innerHTML = '<option value="none">Nenhuma específica</option>';
-                    yearSelect.innerHTML = '<option value="all">Todos os anos</option>';
-
-                    if (subjects && subjects.length > 0) {
-                        console.log('=== ADICIONANDO MATÉRIAS AO SELECT ===');
-                        subjects.forEach(subject => {
-                            console.log('Matéria sendo adicionada:', {
-                                id: subject.id,
-                                nome: subject.nome
-                            });
-                            const option = document.createElement('option');
-                            option.value = subject.id;
-                            option.textContent = subject.nome;
-                            subjectSelect.appendChild(option);
-                        });
-                    } else {
-                        console.log('=== NENHUMA MATÉRIA ENCONTRADA ===');
-                    }
-
-                    // Habilita os selects necessários
-                    subjectSelect.disabled = false;
-                    loadYears(); // Carrega anos disponíveis
-
-                } catch (err) {
-                    console.log('=== ERRO NA EXECUÇÃO ===');
-                    console.log('Erro detalhado:', err);
-                    alert('Erro ao carregar matérias. Por favor, tente novamente.');
-                }
-
-                setLoading(subjectSelect, false);
-                console.log('=== FIM DA SELEÇÃO DE UNIVERSIDADE ===');
-            }
         });
 
         // Subject select change handler
@@ -304,87 +326,182 @@
             }
         });
 
-        // Função para carregar anos
-        async function loadYears() {
-            setLoading(yearSelect, true);
-
-            try {
-                let query = supabaseClient
-                    .from('provas')
-                    .select('ano');
-
-                if (subjectSelect.value !== 'none') {
-                    query = query.eq('materia_id', subjectSelect.value);
-                }
-                if (universitySelect.value) {
-                    query = query.eq('universidade_id', universitySelect.value);
-                }
-
-                const { data: years, error } = await query;
-
-                if (error) throw error;
-
-                yearSelect.innerHTML = '<option value="all">Todos os anos</option>';
-                if (years && years.length > 0) {
-                    const uniqueYears = [...new Set(years.map(y => y.ano))];
-                    uniqueYears.sort((a, b) => b - a);
-
-                    uniqueYears.forEach(year => {
-                        const option = document.createElement('option');
-                        option.value = year;
-                        option.textContent = year;
-                        yearSelect.appendChild(option);
-                    });
-                }
-
-                yearSelect.disabled = false;
-
-            } catch (err) {
-                console.error('Erro ao buscar anos:', err);
-                alert('Erro ao carregar anos. Por favor, tente novamente.');
-            }
-
-            setLoading(yearSelect, false);
+        // Função para voltar para a tela inicial
+        function goToHome() {
+            examSection.classList.add('hidden');
+            selectionForm.classList.remove('hidden');
+            questions = [];
+            currentQuestionIndex = 0;
+            
+            // Resetar estado do botão
+            setLoading(startExamBtn, false);
+            startExamBtn.disabled = false;
+            startExamBtn.classList.remove('opacity-50');
+            startExamBtn.textContent = 'Iniciar Simulado';
         }
 
-        // Year select change handler
-        yearSelect.addEventListener('change', () => {
+        // Adicionar evento de clique no título para voltar ao início
+        document.getElementById('homeBtn').addEventListener('click', goToHome);
+
+        // Função para exibir a questão
+        function displayQuestion(question) {
+            console.log('Exibindo questão:', question);
+            const questionContent = document.getElementById('questionContent');
+            
+            try {
+                // Criar o HTML da questão
+                let questionHtml = `
+                    <div class="question-container">
+                        <div class="enunciado mb-4 text-lg">
+                            ${question.enunciado}
+                        </div>
+                        <div class="opcoes space-y-4">
+                `;
+
+                // Converter string de opções para objeto
+                const opcoesString = question.opcoes.replace(/'/g, '"'); // Substituir aspas simples por duplas
+                let opcoes = JSON.parse(opcoesString);
+                
+                console.log('Opções processadas:', opcoes);
+
+                // Adicionar as opções
+                for (const [letra, texto] of Object.entries(opcoes)) {
+                    questionHtml += `
+                        <div class="opcao flex items-center space-x-2 p-2 hover:bg-gray-100 rounded">
+                            <input type="radio" id="opcao_${letra}" name="resposta" value="${letra}" class="h-4 w-4">
+                            <label for="opcao_${letra}" class="cursor-pointer flex-1">
+                                <span class="font-bold">${letra})</span> ${texto}
+                            </label>
+                        </div>
+                    `;
+                }
+
+                questionHtml += `
+                        </div>
+                    </div>
+                `;
+
+                questionContent.innerHTML = questionHtml;
+            } catch (err) {
+                console.error('Erro ao exibir questão:', err);
+                console.error('Opções originais:', question.opcoes);
+                questionContent.innerHTML = `
+                    <div class="question-container">
+                        <div class="enunciado mb-4 text-lg">
+                            ${question.enunciado}
+                        </div>
+                        <p class="text-red-600">Erro ao carregar as opções.</p>
+                    </div>
+                `;
+            }
+        }
+
+        let currentQuestionIndex = 0;
+
+        // Subject select change handler - Preservar o ano selecionado
+        subjectSelect.addEventListener('change', () => {
+            const selectedYear = yearSelect.value; // Guardar o ano atual
+            
+            if (selectedYear) {
+                setTimeout(() => {
+                    yearSelect.value = selectedYear; // Restaurar o ano após qualquer atualização
+                }, 0);
+            }
+            
             startExamBtn.disabled = false;
         });
 
         // Start exam button handler
         startExamBtn.addEventListener('click', async () => {
             setLoading(startExamBtn, true);
-            const { data: fetchedQuestions, error } = await supabaseClient
-                .from('questions')
-                .select('*')
-                .eq('prova_id', yearSelect.value)
-                .eq('materia_id', subjectSelect.value);
 
-            console.log('Questões recebidas:', fetchedQuestions);
-            console.log('Erro (se houver):', error);
+            try {
+                console.log('Iniciando busca de questões...');
+                let query = supabaseClient
+                    .from('questoes')
+                    .select(`
+                        id,
+                        enunciado,
+                        opcoes,
+                        resposta_correta,
+                        prova_id,
+                        materia_id,
+                        submateria_id,
+                        provas!inner(ano, universidade_id)
+                    `);
 
-            if (error) {
-                console.error('Error fetching questions:', error);
+                // Log dos filtros selecionados
+                console.log('Filtros selecionados:', {
+                    materia: subjectSelect.value,
+                    submateria: subSubjectSelect.value,
+                    universidade: universitySelect.value,
+                    ano: yearSelect.value
+                });
+
+                // Aplicar filtros conforme seleções do usuário (todos opcionais)
+                if (subjectSelect.value !== 'none') {
+                    query = query.eq('materia_id', subjectSelect.value);
+                }
+
+                if (subSubjectSelect.value !== 'none') {
+                    query = query.eq('submateria_id', subSubjectSelect.value);
+                }
+                
+                if (universitySelect.value && universitySelect.value !== '') {
+                    query = query.eq('provas.universidade_id', universitySelect.value);
+                }
+
+                if (yearSelect.value !== 'all') {
+                    query = query.eq('provas.ano', yearSelect.value);
+                }
+
+                const { data: fetchedQuestions, error } = await query;
+
+                console.log('Questões recebidas:', fetchedQuestions);
+
+                if (error) {
+                    throw error;
+                }
+
+                if (!fetchedQuestions || fetchedQuestions.length === 0) {
+                    alert('Nenhuma questão encontrada com os filtros selecionados.');
+                    return;
+                }
+
+                // Embaralhar as questões
+                questions = fetchedQuestions.sort(() => Math.random() - 0.5);
+                currentQuestionIndex = 0;
+                
+                // Esconder o form e mostrar as questões
+                selectionForm.classList.add('hidden');
+                examSection.classList.remove('hidden');
+                
+                // Mostrar a primeira questão
+                console.log('Exibindo primeira questão:', questions[0]);
+                displayQuestion(questions[0]);
+                alert(`${questions.length} questões carregadas!`);
+
+            } catch (err) {
+                console.error('Erro ao buscar questões:', err);
                 alert('Erro ao carregar questões. Por favor, tente novamente.');
-                setLoading(startExamBtn, false);
-                return;
+                goToHome(); // Voltar para o início em caso de erro
             }
 
-            questions = fetchedQuestions;
-            selectionForm.classList.add('hidden');
-            examSection.classList.remove('hidden');
-            displayQuestion(questions[0]);
             setLoading(startExamBtn, false);
         });
 
-        // Function to display question (to be implemented)
-        function displayQuestion(question) {
-            // Implementation for displaying questions
-            console.log('Displaying question:', question);
-        }
+        // Próxima questão
+        document.getElementById('nextQuestion').addEventListener('click', () => {
+            currentQuestionIndex = (currentQuestionIndex + 1) % questions.length;
+            displayQuestion(questions[currentQuestionIndex]);
+        });
 
-        let questions = []; // Array to store fetched questions
+        // Remover dependência entre os selects
+        universitySelect.removeEventListener('change', loadYears);
+        subjectSelect.removeEventListener('change', loadYears);
+
+        // O botão sempre fica habilitado
+        startExamBtn.disabled = false;
     </script>
 </body>
 </html>
